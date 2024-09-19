@@ -4,6 +4,8 @@ const port = 6379;
 const host = '127.0.0.1'
 
 const server = net.createServer((socket) => {
+    // console.log(`Client connected: ${socket.remoteAddress}:${socket.remotePort}`);
+
     socket.on('data', (data) => {
 
         socket.write('+PONG\r\n');
