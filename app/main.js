@@ -1,7 +1,10 @@
-const net = require('net')
+const net = require('net');
+const { parse } = require('path');
 
 const port = 6379;
 const host = '127.0.0.1'
+
+const keyValueMapping = {};
 
 const server = net.createServer((socket) => {
     // console.log(`Client connected: ${socket.remoteAddress}:${socket.remotePort}`);
@@ -15,6 +18,24 @@ const server = net.createServer((socket) => {
             const response = parseResponse('bulkString', arg1);
 
             socket.write(response);
+        }
+        else if(command && command.toLowerCase() == 'set'){
+            const key = commandArray[1];
+            const value = commandArray[2];
+            keyValueMapping[key] = value;
+            socket.write('+OK\r\n');
+        }
+        else if(command && command.toLowerCase() == 'get'){
+            const key = commandArray[1];
+            const value = keyValueMapping[key];
+
+            if(value){
+                const response = parseResponse('bulkString', keyValueMapping[key]);
+                socket.write(response);
+            }
+            else
+            socket.write('$-1\r\n');
+
         }
         else {
             // Assume it will be PING command 
@@ -35,10 +56,8 @@ const parseCommand = (command) => {
 
     if (commandArray[0].includes('*')) {
         // command is an array 
-        const arrayLength = commandArray[0].slice(1);
-
-        for (let i = 0; i < commandArray.length; i += parseInt(arrayLength)) {
-            const element = commandArray[i + parseInt(arrayLength)];
+        for (let i = 1; i < commandArray.length; i += 2) {
+            const element = commandArray[i + 1];
             if (element)
                 finalArray.push(element);
         }
@@ -57,4 +76,6 @@ const parseResponse = (respEncoding, content) => {
  * nc 127.0.0.1 6379 
  * send msgs 
  * Disconnect with server with ctrl+c
-// *2\r\n$4\r\nEChO\r\n$6\r\nbanana\r\n */
+ * 
+ * Run redis-cli locally and test for parsing your command and response. 
+**/
