@@ -30,7 +30,7 @@ server.listen(port, host, () => {
 });
 
 const parseCommand = (command) => {
-    const commandArray = command.split('\\r\\n');
+    const commandArray = command.split('\r\n');
     const finalArray = [];
 
     if (commandArray[0].includes('*')) {
@@ -49,7 +49,7 @@ const parseCommand = (command) => {
 
 const parseResponse = (respEncoding, content) => {
     if (respEncoding == 'bulkString') {
-        return `$${content.length}\\r\\n${content}\\r\\n`;
+        return `$${content.length}\r\n${content}\r\n`;
     }
 }
 /**
@@ -57,4 +57,4 @@ const parseResponse = (respEncoding, content) => {
  * nc 127.0.0.1 6379 
  * send msgs 
  * Disconnect with server with ctrl+c
- */
+// *2\r\n$4\r\nEChO\r\n$6\r\nbanana\r\n */
