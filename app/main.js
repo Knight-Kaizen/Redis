@@ -1,11 +1,22 @@
-const net = require("net");
+const net = require('net')
 
-// You can use print statements as follows for debugging, they'll be visible when running tests.
-console.log("Logs from your program will appear here!");
+const port = 6379;
+const host = '127.0.0.1'
 
-// Uncomment this block to pass the first stage
-// const server = net.createServer((connection) => {
-//   // Handle connection
-// });
-//
-// server.listen(6379, "127.0.0.1");
+const server = net.createServer((socket) => {
+    socket.on('data', (data) => {
+        
+    })
+  
+})
+
+
+server.listen(port, host, () => {
+});
+
+/**
+ * Connect with this server using netcat in another terminal
+ * nc 127.0.0.1 6379 
+ * send msgs 
+ * Disconnect with server with ctrl+c
+ */
