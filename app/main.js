@@ -1,40 +1,50 @@
 const net = require('net');
-const { parse } = require('path');
+const moment = require('moment-timezone')
 
 const port = 6379;
 const host = '127.0.0.1'
 
-const keyValueMapping = {};
+const keyValueMapping = {
+    // key: { value: 34, expiry: UNIX } // Format for storing keys and values 
+};
 
 const server = net.createServer((socket) => {
     // console.log(`Client connected: ${socket.remoteAddress}:${socket.remotePort}`);
 
     socket.on('data', (data) => {
         const commandArray = parseCommand(data.toString());
-
         const command = commandArray[0];
+
         if (command && command.toLowerCase() == 'echo') {
             const arg1 = commandArray[1];
             const response = parseResponse('bulkString', arg1);
 
             socket.write(response);
         }
-        else if(command && command.toLowerCase() == 'set'){
+        else if (command && command.toLowerCase() == 'set') {
             const key = commandArray[1];
             const value = commandArray[2];
-            keyValueMapping[key] = value;
+            const flag = commandArray[3] ? commandArray[3] : '';
+            const expiryInSec = commandArray[4] ? commandArray[4]: '';
+
+            keyValueMapping[key] = {value};
+            if( flag.toLowerCase() == 'px' && expiryInSec){
+                keyValueMapping[key].expiry = moment().add(expiryInSec, 'seconds').unix();
+            }
             socket.write('+OK\r\n');
         }
-        else if(command && command.toLowerCase() == 'get'){
+        else if (command && command.toLowerCase() == 'get') {
             const key = commandArray[1];
-            const value = keyValueMapping[key];
 
-            if(value){
-                const response = parseResponse('bulkString', keyValueMapping[key]);
+            const value = keyValueMapping[key] ? keyValueMapping[key].value : '';
+            const expiry = keyValueMapping[key] ? keyValueMapping[key].expiry: '';
+            
+            if (value && expiry > moment().unix()) {
+                const response = parseResponse('bulkString', value);
                 socket.write(response);
             }
             else
-            socket.write('$-1\r\n');
+                socket.write('$-1\r\n');
 
         }
         else {

@@ -1,5 +1,7 @@
 {
   "name": "@codecrafters/redis",
   "version": "1.0.0",
-  "dependencies": {}
+  "dependencies": {
+    "moment-timezone": "^0.5.45"
+  }
 }
