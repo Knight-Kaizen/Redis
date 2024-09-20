@@ -25,10 +25,10 @@ const server = net.createServer((socket) => {
             const key = commandArray[1];
             const value = commandArray[2];
             const flag = commandArray[3] ? commandArray[3] : '';
-            const expiryInSec = commandArray[4] ? commandArray[4]: '';
+            const expiryInSec = commandArray[4] ? commandArray[4] : '';
 
-            keyValueMapping[key] = {value};
-            if( flag.toLowerCase() == 'px' && expiryInSec){
+            keyValueMapping[key] = { value };
+            if (flag.toLowerCase() == 'px' && expiryInSec) {
                 keyValueMapping[key].expiry = moment().add(expiryInSec, 'milliseconds').unix();
             }
             socket.write('+OK\r\n');
@@ -37,9 +37,9 @@ const server = net.createServer((socket) => {
             const key = commandArray[1];
 
             const value = keyValueMapping[key] ? keyValueMapping[key].value : '';
-            const expiry = keyValueMapping[key] ? keyValueMapping[key].expiry: '';
+            const expiry = keyValueMapping[key] ? keyValueMapping[key].expiry : '';
 
-            if (value && expiry > moment().unix()) {
+            if (value && (expiry ? expiry > moment().unix() : true)) {
                 const response = parseResponse('bulkString', value);
                 socket.write(response);
             }
