@@ -14,7 +14,7 @@ const server = net.createServer((socket) => {
     socket.on('data', (data) => {
         const commandArray = parseCommand(data.toString());
         const command = commandArray[0];
-
+        // console.log({commandArray});
         if (command && command.toLowerCase() == 'echo') {
             const arg1 = commandArray[1];
             const response = parseResponse('bulkString', arg1);
@@ -46,7 +46,31 @@ const server = net.createServer((socket) => {
             else
                 socket.write('$-1\r\n');
 
-        }
+       }
+       else if(command && command.toLowerCase() == 'config'){
+        // 2 config commands allowed - 
+            const arg1 = commandArray[1];
+            const arg2 = commandArray[2];
+
+            if(arg1.toLowerCase() == 'get' && arg2){
+                if(arg2.toLowerCase() == 'dir'){
+                    // response will be an array => [dir, /tmp/redis-data]
+                    socket.write(parseResponse('bulkStringArray', ['dir', '/tmp/redis-data']));
+                }
+                else if(arg2.toLowerCase() == 'dbfilename'){
+                    // response will be an array => [dbfilename, dump.rdb]
+                    socket.write(parseResponse('bulkStringArray', ['dbfilename', 'dump.rdb']));
+                }
+                else
+                socket.write('$-1\r\n');
+            }
+            else{
+                socket.write('$-1\r\n');
+            }
+        // 1. CONFIG GET dir 
+
+        // 2. CONFIG GET dbfilename
+       }
         else {
             // Assume it will be PING command 
             socket.write('+PONG\r\n');
@@ -79,6 +103,14 @@ const parseCommand = (command) => {
 const parseResponse = (respEncoding, content) => {
     if (respEncoding == 'bulkString') {
         return `$${content.length}\r\n${content}\r\n`;
+    }
+    if(respEncoding == 'bulkStringArray'){
+        // content will be array in this case 
+        let response = `*${content.length}\r\n`;
+        for(const element of content){
+            response += `$${element.length}\r\n${element}\r\n`
+        }
+        return response;
     }
 }
 /**
