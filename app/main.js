@@ -8,6 +8,10 @@ const keyValueMapping = {
     // key: { value: 34, expiry: UNIX } // Format for storing keys and values 
 };
 
+
+const arguments = process.argv.slice(2);
+const [fileDir, fileName] = [arguments[1] ?? null, arguments[3] ?? null];
+
 const server = net.createServer((socket) => {
     // console.log(`Client connected: ${socket.remoteAddress}:${socket.remotePort}`);
 
@@ -55,11 +59,11 @@ const server = net.createServer((socket) => {
             if(arg1.toLowerCase() == 'get' && arg2){
                 if(arg2.toLowerCase() == 'dir'){
                     // response will be an array => [dir, /tmp/redis-data]
-                    socket.write(parseResponse('bulkStringArray', ['dir', '/tmp/redis-data']));
+                    socket.write(parseResponse('bulkStringArray', ['dir', fileDir]));
                 }
                 else if(arg2.toLowerCase() == 'dbfilename'){
                     // response will be an array => [dbfilename, dump.rdb]
-                    socket.write(parseResponse('bulkStringArray', ['dbfilename', 'dump.rdb']));
+                    socket.write(parseResponse('bulkStringArray', ['dbfilename', fileName]));
                 }
                 else
                 socket.write('$-1\r\n');
