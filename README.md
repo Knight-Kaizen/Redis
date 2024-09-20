@@ -31,3 +31,7 @@ Note: This section is for stages 2 and beyond.
    `app/main.js`.
 1. Commit your changes and run `git push origin master` to submit your solution
    to CodeCrafters. Test output will be streamed to your terminal.
+
+Test on cli 
+brew install codecrafters-io/tap/codecrafters
+codecrafters test 
