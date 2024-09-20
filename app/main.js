@@ -43,7 +43,7 @@ const server = net.createServer((socket) => {
             const value = keyValueMapping[key] ? keyValueMapping[key].value : '';
             const expiry = keyValueMapping[key] ? keyValueMapping[key].expiry : '';
 
-            if (value && (expiry ? expiry > moment().unix() : true)) {
+            if (value && (expiry ? expiry >= moment().unix() : true)) {
                 const response = parseResponse('bulkString', value);
                 socket.write(response);
             }
