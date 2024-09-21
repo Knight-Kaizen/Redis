@@ -75,16 +75,16 @@ const handleConfigCommand = (commandArray, fileDir, fileName) =>{
        const arg2 = commandArray[2];
 
        if (arg1.toLowerCase() == 'get' && arg2) {
-           if (arg2.toLowerCase() == 'dir') {
+           if (arg2.toLowerCase() == 'dir' && fileDir) {
                // response will be an array => [dir, /tmp/redis-data]
                return (parseResponse('bulkStringArray', ['dir', fileDir]));
            }
-           else if (arg2.toLowerCase() == 'dbfilename') {
+           else if (arg2.toLowerCase() == 'dbfilename' && fileName) {
                // response will be an array => [dbfilename, dump.rdb]
                return (parseResponse('bulkStringArray', ['dbfilename', fileName]));
            }
            else
-               return '$-1\r\n';
+               return '-ERR: Missing dir and filename arguments or wrong command\r\n';
        }
        else {
            return '$-1\r\n';
