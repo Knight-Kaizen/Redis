@@ -40,6 +40,11 @@ const server = net.createServer((socket) => {
             socket.write('+OK\r\n');
         }
         else if (command && command.toLowerCase() == 'get') {
+
+            if(fileDir && fileName){
+                parseDumpRDBFile(path.join(fileDir, fileName));
+            }
+
             const key = commandArray[1];
 
             const value = redisStore[key] ? redisStore[key].value : '';
