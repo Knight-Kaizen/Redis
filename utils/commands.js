@@ -25,7 +25,8 @@ const parseResponse = (respEncoding, content) => {
 // it will recieve rdb file and directory
 const loadRedisStore= (fileDir, fileName)=>{
     const filePath = path.join(fileDir, fileName);
-    const parsedRDB = rdbParser(filePath);
+    const devENV = (fileDir == './testingDumps' && fileName == 'dump.rdb') ? true: false;
+    const parsedRDB = rdbParser(filePath, devENV);
     redisStore = parsedRDB.redisStore;
     // console.log('redis store loaded', redisStore, parsedRDB);
 }

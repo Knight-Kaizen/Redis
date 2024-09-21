@@ -1,8 +1,8 @@
 const net = require('net');
 const fs = require('fs');
 const path = require('path')
-const { handleEchoCommand, handleSetCommand, handleGetCommand, handleConfigCommand, handleKeysCommand, handlePingCommand, loadRedisStore } = require('../commands');
-const { rdbParser } = require('../rdbParser');
+const { handleEchoCommand, handleSetCommand, handleGetCommand, handleConfigCommand, handleKeysCommand, handlePingCommand, loadRedisStore } = require('../utils/commands');
+const { rdbParser } = require('../utils/rdbParser');
 
 const port = 6379;
 const host = '127.0.0.1'
