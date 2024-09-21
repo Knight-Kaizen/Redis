@@ -13,6 +13,7 @@ const redisStore = {
 
 const arguments = process.argv.slice(2);
 const [fileDir, fileName] = [arguments[1] ?? null, arguments[3] ?? null];
+let isRedisStoreLoaded = false;
 
 const server = net.createServer((socket) => {
     // console.log(`Client connected: ${socket.remoteAddress}:${socket.remotePort}`);
@@ -41,7 +42,7 @@ const server = net.createServer((socket) => {
         }
         else if (command && command.toLowerCase() == 'get') {
 
-            if(fileDir && fileName){
+            if(fileDir && fileName && !isRedisStoreLoaded){
                 parseDumpRDBFile(path.join(fileDir, fileName));
             }
 
