@@ -1,0 +1,43 @@
+// Understanding dump.rdb
+
+
+// Header: "REDIS0011" (RDB version 11)
+524544495330303131    // 5 bytes, written in hexadecimal format corresponds to ASCII      
+----------------------------------------------
+// Auxiliary field: "redis-ver", value: "7.2.3" 
+// OP Code fa marks aux feild 
+// first 2 chars tell about the encoding
+fa 0972656469732d766572 05372e322e33 
+----------------------------------------------
+// Auxiliary field: "redis-bits", value: 64 (c0 40 = 64 bits)
+fa 0a72656469732d62697473 c040  // value type is indicated by c0, which tells us this is an 8-bit integer, convert this hexadecimal into decimal 
+----------------------------------------------
+// Auxiliary field: "ctime", value: 1713824559637 (some timestamp, this is wrong)
+fa 056374696d65 c290a2ed66  // c2 means ??
+----------------------------------------------
+// Auxiliary field: "used-mem", value: 12,500,000 bytes (or so)
+fa 08 757365642d6d656d c2 80501200 
+----------------------------------------------
+// Auxiliary field: "aof-base", value: 0
+fa 08 616f662d62617365 c0 00 
+----------------------------------------------
+// DATABASE Section Begins --> OP Code FE 
+----------------------------------------------
+fe 00    // Database selector: database 0, 1-byte length-encoded integer
+fb 03  01  // Resizedb: hash table size is 3, 1 key is with expiry , 1-byte length-encoded integer
+----------------------------------------------
+// Key-Value pair 1 without expiry 
+00   // Value type : string 
+046b657931 0676616c756531  // Key: "key1", Value: "value1" (string encoded)
+----------------------------------------------
+// Key-Value Pair 2 (With Expiry in Milliseconds) OP COde -> FC 
+fc 537c381692010000  // expiry time 
+00 // value type string 
+046b657932 0676616c756532  // Key: "key2", Value: "value2" (string encoded)
+----------------------------------------------
+// Key-Value pair - 3 without expiry 
+00 // value type string 
+046b657933 0476616c33  // Key: "key3", Value: "val3"  (string encoded)
+----------------------------------------------
+// EOF file (checksum) -> OP Code FF 
+ff 786586add2e3b1a9            
