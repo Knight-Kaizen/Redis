@@ -148,9 +148,9 @@ const parseDumpRDBFile = (filePath) => {
     // console.log({headerString, remainingFileContent});
 
     // Extract EOF Section
-    const eofStringIndex = remainingFileContent.indexOf('ff');
-    const eofString = remainingFileContent.substring(eofStringIndex);
-    remainingFileContent = remainingFileContent.slice(0, remainingFileContent.length - eofString.length)
+    // const eofStringIndex = remainingFileContent.indexOf('ff');
+    // const eofString = remainingFileContent.substring(eofStringIndex);
+    // remainingFileContent = remainingFileContent.slice(0, remainingFileContent.length - eofString.length)
     // console.log({eofString, remainingFileContent});
 
     // Extract Database Section
@@ -175,6 +175,11 @@ const parseDumpRDBFile = (filePath) => {
         const entryType = `${remainingDBString[0]}${remainingDBString[1]}`
         // remainingDBString = remainingDBString.slice(2);
         // console.log({entryType, remainingDBString});
+        if(entryType == 'ff'){
+            // EOF file section reached
+            remainingDBString = '';
+            continue;
+        }
 
         let key = '';
         let value = '';
