@@ -84,7 +84,7 @@ const parseCommand = (command) => {
     return finalArray
 }
 // To debug rdb parser, create testDump.rdb file and put rdb in it
-rdbParser('./testDump.rdb', true)
+// rdbParser('./testDump.rdb', true)
 /**
  * Connect with this server using netcat in another terminal
  * nc 127.0.0.1 6379 
