@@ -11,7 +11,7 @@ const sendHandshake = (flagsAndValues) => {
 
 
         client.connect(masterPort, masterHost, function () {
-            // console.log('connected to master');
+            console.log('connected to master');
 
             // Handshake step 1: Send PING command to master
             const ping = parseResponse('bulkStringArray', ['PING'])
@@ -22,18 +22,21 @@ const sendHandshake = (flagsAndValues) => {
 
         // Handle data received from the server
         client.on('data', function (data) {
-            // console.log('Received: ' + data);
+            data = data.toString();
+            // console.log('Recieved data', data);
 
-            // Handshake step 2: Send REPLCONF command
-            // The REPLCONF command is used to configure replication. Replicas will send this command to the master twice
+            // Handshake step 2: Send REPLCONF command if received +PONG
+            if (data.includes('PONG')) {
+                // The REPLCONF command is used to configure replication. Replicas will send this command to the master twice
 
-            // notifying the master of the port it's listening on
-            const replconf1 = parseResponse('bulkStringArray', ['REPLCONF', 'listening-port', flagsAndValues.port])
-            client.write(replconf1);
+                // notifying the master of the port it's listening on
+                const replconf1 = parseResponse('bulkStringArray', ['REPLCONF', 'listening-port', flagsAndValues.port])
+                client.write(replconf1);
 
-            // replica notifying the master of its capabilities ("capa" is short for "capabilities")
-            const replconf2 = parseResponse('bulkStringArray', ['REPLCONF', 'capa', 'psync2'])  // hardcoding capabilities for now
-            client.write(replconf2);
+                // replica notifying the master of its capabilities ("capa" is short for "capabilities")
+                const replconf2 = parseResponse('bulkStringArray', ['REPLCONF', 'capa', 'psync2'])  // hardcoding capabilities for now
+                client.write(replconf2);
+            }
         });
 
     }
