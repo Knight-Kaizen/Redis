@@ -2,17 +2,21 @@ const net = require('net');
 const fs = require('fs');
 const path = require('path')
 const { handleEchoCommand, handleSetCommand, handleGetCommand, handleConfigCommand, handleKeysCommand, handlePingCommand, loadRedisStore } = require('../utils/commands');
-const { rdbParser } = require('../utils/rdbParser');
 
-const port = 6379;
+let port = 6379; // default
 const host = '127.0.0.1'
 
 const arguments = process.argv.slice(2);
+
+// If port flag comes, use dynamic port
+if(arguments && arguments[0] == '--port')
+    port = arguments[1];
+
 const [fileDir, fileName] = [arguments[1] ?? null, arguments[3] ?? null];
 let isRedisStoreLoaded = false;
 
 const server = net.createServer((socket) => {
-    // console.log(`Client connected: ${socket.remoteAddress}:${socket.remotePort}`);
+    console.log(`Client connected: ${socket.remoteAddress}:${socket.remotePort}`);
 
     socket.on('data', (data) => {
         const commandArray = parseCommand(data.toString());
@@ -65,7 +69,7 @@ const server = net.createServer((socket) => {
 
 
 server.listen(port, host, () => {
-    // console.log('Redis Server running on ', port);
+    console.log('Redis Server running on ', port);
 });
 
 const parseCommand = (command) => {
@@ -83,13 +87,3 @@ const parseCommand = (command) => {
 
     return finalArray
 }
-// To debug rdb parser, create testDump.rdb file and put rdb in it
-// rdbParser('./testDump.rdb', true)
-/**
- * Connect with this server using netcat in another terminal
- * nc 127.0.0.1 6379 
- * send msgs 
- * Disconnect with server with ctrl+c
- * 
- * Run redis-cli locally and test for parsing your command and response. 
-**/
