@@ -110,8 +110,9 @@ const handleInfoCommand = (commandArray, flagsAndValues) => {
         const serverRole = flagsAndValues.replicaof ? 'slave' : 'master';
         const totalSlaves = 0; // hardocde
         const serverID = '8371b4fb1155b71f4a04d3e1bc3e18c4a990aeeb';
+        const masterOffset = 0;
         const response = parseResponse('bulkString',
-            `role:${serverRole}\nconnected_slaves:${totalSlaves}\nmaster_replid:${serverID}`
+            `role:${serverRole}\nconnected_slaves:${totalSlaves}\nmaster_replid:${serverID}\nmaster_repl_offset:${masterOffset}`
         )
         return response;
     }
