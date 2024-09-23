@@ -103,6 +103,22 @@ const handleKeysCommand = (commandArray) =>{
 const handlePingCommand = () =>{
     return '+PONG\r\n';
 }
+
+const handleInfoCommand = (commandArray)=>{
+    if(commandArray[1].toLowerCase() == 'replication'){
+        // it needs info about redis cluster, role of current server, number of slaves, etc. 
+        const serverRole = 'master'; // hardcoding master for now
+        const totalSlaves = 0; // hardocde
+        const serverID = '8371b4fb1155b71f4a04d3e1bc3e18c4a990aeeb';
+        const response = parseResponse('bulkString', 
+            `role:${serverRole}\nconnected_slaves:${totalSlaves}\nmaster_replid:${serverID}`
+        )
+        return response;
+    }
+    else 
+    return parseResponse('bulkString', 'allInfoHere')
+}
+
 module.exports = {
     handleEchoCommand,
     handleSetCommand,
@@ -110,5 +126,6 @@ module.exports = {
     handleConfigCommand,
     handleKeysCommand,
     handlePingCommand,
-    loadRedisStore
+    loadRedisStore,
+    handleInfoCommand
 }
