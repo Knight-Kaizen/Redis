@@ -101,6 +101,7 @@ const handleKeysCommand = (commandArray) => {
 }
 
 const handlePingCommand = () => {
+    console.log('received ping command, responding');
     return '+PONG\r\n';
 }
 
@@ -128,5 +129,6 @@ module.exports = {
     handleKeysCommand,
     handlePingCommand,
     loadRedisStore,
-    handleInfoCommand
+    handleInfoCommand,
+    parseResponse
 }

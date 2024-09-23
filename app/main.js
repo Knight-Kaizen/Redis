@@ -2,6 +2,7 @@ const net = require('net');
 const fs = require('fs');
 const path = require('path')
 const { handleEchoCommand, handleSetCommand, handleGetCommand, handleConfigCommand, handleKeysCommand, handlePingCommand, loadRedisStore, handleInfoCommand } = require('../utils/commands');
+const { sendHandshake } = require('../utils/replication');
 
 let port = 6379; // default
 const host = '127.0.0.1'
@@ -23,6 +24,11 @@ for (let i = 0; i < arguments.length; i += 2) {
 // If port flag comes, use dynamic port
 if (flagsAndValues.port)
     port = flagsAndValues.port
+
+// If this is replica server, connect to master
+if(flagsAndValues.replicaof){
+    sendHandshake(flagsAndValues);
+}
 
 const [fileDir, fileName] = [arguments[1] ?? null, arguments[3] ?? null];
 let isRedisStoreLoaded = false;
