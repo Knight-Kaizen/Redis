@@ -6,11 +6,23 @@ const { handleEchoCommand, handleSetCommand, handleGetCommand, handleConfigComma
 let port = 6379; // default
 const host = '127.0.0.1'
 
+const flagsAndValues = { // It will contain all the supported flags, and values will be updated if any flag is passed in arguments. 
+    // --port flag will be passed if server to be run dynamic port
+    port: null,
+    fileDir: null,
+    fileName: null,
+    // If server runs in replica mode, master host & port will be passed
+    replicaof: null
+};
 const arguments = process.argv.slice(2);
+for (let i = 0; i < arguments.length; i += 2) {
+    const flag = arguments[i].split('--')[1];
+    flagsAndValues[flag] = arguments[i + 1]
+}
 
 // If port flag comes, use dynamic port
-if (arguments && arguments[0] == '--port')
-    port = arguments[1];
+if (flagsAndValues.port)
+    port = flagsAndValues.port
 
 const [fileDir, fileName] = [arguments[1] ?? null, arguments[3] ?? null];
 let isRedisStoreLoaded = false;
@@ -58,9 +70,9 @@ const server = net.createServer((socket) => {
                 break;
 
             case 'info':
-                response = handleInfoCommand(commandArray);
+                response = handleInfoCommand(commandArray, flagsAndValues);
                 break;
-                
+
             default:
                 response = `-ERR unknown command '${command}'\r\n`;
         }

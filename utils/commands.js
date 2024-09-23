@@ -23,9 +23,9 @@ const parseResponse = (respEncoding, content) => {
 }
 
 // it will recieve rdb file and directory
-const loadRedisStore= (fileDir, fileName)=>{
+const loadRedisStore = (fileDir, fileName) => {
     const filePath = path.join(fileDir, fileName);
-    const devENV = (fileDir == './testingDumps' && fileName == 'dump.rdb') ? true: false;
+    const devENV = (fileDir == './testingDumps' && fileName == 'dump.rdb') ? true : false;
     const parsedRDB = rdbParser(filePath, devENV);
     redisStore = parsedRDB.redisStore;
     // console.log('redis store loaded', redisStore, parsedRDB);
@@ -33,14 +33,14 @@ const loadRedisStore= (fileDir, fileName)=>{
 
 // ------------------------------- Command Functions ----------------------------
 
-const handleEchoCommand = (commandArray) =>{
+const handleEchoCommand = (commandArray) => {
     const arg1 = commandArray[1] ? commandArray[1] : 'Echo';
     const response = parseResponse('bulkString', arg1);
 
     return response;
 }
 
-const handleSetCommand = (commandArray) =>{
+const handleSetCommand = (commandArray) => {
     const key = commandArray[1];
     const value = commandArray[2];
     const flag = commandArray[3] ? commandArray[3] : '';
@@ -53,8 +53,8 @@ const handleSetCommand = (commandArray) =>{
     return '+OK\r\n';
 }
 
-const handleGetCommand = (commandArray) =>{
-   
+const handleGetCommand = (commandArray) => {
+
 
     const key = commandArray[1];
 
@@ -69,29 +69,29 @@ const handleGetCommand = (commandArray) =>{
         return '$-1\r\n';
 }
 
-const handleConfigCommand = (commandArray, fileDir, fileName) =>{
-       // 2 config commands allowed - 
-       const arg1 = commandArray[1];
-       const arg2 = commandArray[2];
+const handleConfigCommand = (commandArray, fileDir, fileName) => {
+    // 2 config commands allowed - 
+    const arg1 = commandArray[1];
+    const arg2 = commandArray[2];
 
-       if (arg1.toLowerCase() == 'get' && arg2) {
-           if (arg2.toLowerCase() == 'dir' && fileDir) {
-               // response will be an array => [dir, /tmp/redis-data]
-               return (parseResponse('bulkStringArray', ['dir', fileDir]));
-           }
-           else if (arg2.toLowerCase() == 'dbfilename' && fileName) {
-               // response will be an array => [dbfilename, dump.rdb]
-               return (parseResponse('bulkStringArray', ['dbfilename', fileName]));
-           }
-           else
-               return '-ERR: Missing dir and filename arguments or wrong command\r\n';
-       }
-       else {
-           return '$-1\r\n';
-       }
+    if (arg1.toLowerCase() == 'get' && arg2) {
+        if (arg2.toLowerCase() == 'dir' && fileDir) {
+            // response will be an array => [dir, /tmp/redis-data]
+            return (parseResponse('bulkStringArray', ['dir', fileDir]));
+        }
+        else if (arg2.toLowerCase() == 'dbfilename' && fileName) {
+            // response will be an array => [dbfilename, dump.rdb]
+            return (parseResponse('bulkStringArray', ['dbfilename', fileName]));
+        }
+        else
+            return '-ERR: Missing dir and filename arguments or wrong command\r\n';
+    }
+    else {
+        return '$-1\r\n';
+    }
 }
 
-const handleKeysCommand = (commandArray) =>{
+const handleKeysCommand = (commandArray) => {
     const arg1 = commandArray[1];
     if (arg1 == "*") {
         const response = parseResponse('bulkStringArray', Object.keys(redisStore))
@@ -100,23 +100,23 @@ const handleKeysCommand = (commandArray) =>{
     else return '+PONG\r\n';
 }
 
-const handlePingCommand = () =>{
+const handlePingCommand = () => {
     return '+PONG\r\n';
 }
 
-const handleInfoCommand = (commandArray)=>{
-    if(commandArray[1].toLowerCase() == 'replication'){
+const handleInfoCommand = (commandArray, flagsAndValues) => {
+    if (commandArray[1].toLowerCase() == 'replication') {
         // it needs info about redis cluster, role of current server, number of slaves, etc. 
-        const serverRole = 'master'; // hardcoding master for now
+        const serverRole = flagsAndValues.replicaof ? 'slave' : 'master';
         const totalSlaves = 0; // hardocde
         const serverID = '8371b4fb1155b71f4a04d3e1bc3e18c4a990aeeb';
-        const response = parseResponse('bulkString', 
+        const response = parseResponse('bulkString',
             `role:${serverRole}\nconnected_slaves:${totalSlaves}\nmaster_replid:${serverID}`
         )
         return response;
     }
-    else 
-    return parseResponse('bulkString', 'allInfoHere')
+    else
+        return parseResponse('bulkString', 'allInfoHere')
 }
 
 module.exports = {
