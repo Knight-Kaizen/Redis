@@ -37,8 +37,24 @@ const sendHandshake = (flagsAndValues) => {
                 const replconf2 = parseResponse('bulkStringArray', ['REPLCONF', 'capa', 'psync2'])  // hardcoding capabilities for now
                 client.write(replconf2);
             }
+
+            // Handshake step 3: Send PSYNC command
+            // The PSYNC command is used to synchronize the state of the replica with the master.
+            if(data.includes('OK')){
+                
+                // Since this is the first time the replica is connecting to the master, the replication ID will be ? (a question mark)
+                const replicationID = '?'
+                // Since this is the first time the replica is connecting to the master, the offset will be -1
+                const offset = '-1';
+
+                const psync = parseResponse('bulkStringArray', ['PSYNC', replicationID, offset])
+                client.write(psync);
+            }
         });
 
+        client.on('error', (err)=>{
+            console.log(err);
+        })
     }
 
 }
