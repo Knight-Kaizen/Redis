@@ -1,7 +1,7 @@
 const path = require('path');
 const moment = require('moment-timezone');
 const { rdbParser } = require('./rdbParser');
-const { off } = require('process');
+const fs = require('fs');
 
 let redisStore = {
     // key: { value: 34, expiry: UNIX } // Format for storing keys and values 
@@ -38,7 +38,7 @@ const handleEchoCommand = (commandArray) => {
     const arg1 = commandArray[1] ? commandArray[1] : 'Echo';
     const response = parseResponse('bulkString', arg1);
 
-    return response;
+    return [response];
 }
 
 const handleSetCommand = (commandArray) => {
@@ -51,7 +51,7 @@ const handleSetCommand = (commandArray) => {
     if (flag.toLowerCase() == 'px' && expiryInSec) {
         redisStore[key].expiry = moment().add(expiryInSec, 'milliseconds').valueOf();
     }
-    return '+OK\r\n';
+    return ['+OK\r\n'];
 }
 
 const handleGetCommand = (commandArray) => {
@@ -67,7 +67,7 @@ const handleGetCommand = (commandArray) => {
         return (response);
     }
     else
-        return '$-1\r\n';
+        return ['$-1\r\n'];
 }
 
 const handleConfigCommand = (commandArray, fileDir, fileName) => {
@@ -88,7 +88,7 @@ const handleConfigCommand = (commandArray, fileDir, fileName) => {
             return '-ERR: Missing dir and filename arguments or wrong command\r\n';
     }
     else {
-        return '$-1\r\n';
+        return ['$-1\r\n'];
     }
 }
 
@@ -98,12 +98,12 @@ const handleKeysCommand = (commandArray) => {
         const response = parseResponse('bulkStringArray', Object.keys(redisStore))
         return (response);
     }
-    else return '+PONG\r\n';
+    else return ['+PONG\r\n'];
 }
 
 const handlePingCommand = () => {
     console.log('received ping command, responding');
-    return '+PONG\r\n';
+    return ['+PONG\r\n'];
 }
 
 const handleInfoCommand = (commandArray, flagsAndValues) => {
@@ -116,14 +116,14 @@ const handleInfoCommand = (commandArray, flagsAndValues) => {
         const response = parseResponse('bulkString',
             `role:${serverRole}\nconnected_slaves:${totalSlaves}\nmaster_replid:${serverID}\nmaster_repl_offset:${masterOffset}`
         )
-        return response;
+        return [response];
     }
     else
         return parseResponse('bulkString', 'allInfoHere')
 }
 
 const handleReplConfCommand = (commandArray) => {
-    const response = '+OK\r\n'; // hardcoding simple response for now
+    const response = ['+OK\r\n']; // hardcoding simple response for now
     return response;
 }
 
@@ -131,14 +131,23 @@ const handlePsyncCommand = (commandArray) => {
     let masterReplicationID = commandArray[1];
     let slaveOffset = commandArray[2];
 
-    let response = '';
+    const response = [];
     if (masterReplicationID == '?' && slaveOffset == -1) {
         // This is the first time synchronise 
         // replication is is unknown to slave, so we will set it 
         masterReplicationID = '8371b4fb1155b71f4a04d3e1bc3e18c4a990aeeb'; // sending the masters replication ID. 
         // offset will be set to zero 
         const masterOffset = 0; // sending offset = 0, means no data is sent till now.
-        response = `+FULLRESYNC ${masterReplicationID} ${masterOffset}\r\n`
+        response.push(`+FULLRESYNC ${masterReplicationID} ${masterOffset}\r\n`);
+
+        // Send current snapshot of master's data to replica
+        const fileContentInHex = fs.readFileSync(path.join(process.cwd(), 'testingDumps', 'emptyDumpInbase64.rdb'));
+        const rdbBuffer = Buffer.from(fileContentInHex.toString(), 'hex');
+        const rdbHead = Buffer.from(`$${rdbBuffer.length}\r\n`);
+
+        response.push(rdbHead);
+        response.push(rdbBuffer);
+
     }
     return response;
 }

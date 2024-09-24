@@ -50,7 +50,7 @@ const server = net.createServer((socket) => {
         }
 
 
-        let response = '$-1\r\n';
+        let response = [];
         switch (command) {
             case 'echo':
                 response = handleEchoCommand(commandArray);
@@ -89,8 +89,8 @@ const server = net.createServer((socket) => {
             default:
                 response = `-ERR unknown command '${command}'\r\n`;
         }
-
-        socket.write(response);
+        for (const resp of response)
+            socket.write(resp);
 
     })
 
