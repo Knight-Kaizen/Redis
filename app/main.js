@@ -33,6 +33,14 @@ if (flagsAndValues.replicaof) {
 const [fileDir, fileName] = [arguments[1] ?? null, arguments[3] ?? null];
 let isRedisStoreLoaded = false;
 
+// save all slave connection 
+const connectedSlaves = [];
+
+const sendWriteCommandsToSlaves = (data) => {
+    for (const slaveSocket of connectedSlaves)
+        slaveSocket.write(data);
+}
+
 const server = net.createServer((socket) => {
     console.log(`Client connected: ${socket.remoteAddress}:${socket.remotePort}`);
 
@@ -57,6 +65,7 @@ const server = net.createServer((socket) => {
                 break;
             case 'set':
                 response = handleSetCommand(commandArray);
+                sendWriteCommandsToSlaves(data);
                 break;
 
             case 'get':
@@ -78,12 +87,15 @@ const server = net.createServer((socket) => {
             case 'info':
                 response = handleInfoCommand(commandArray, flagsAndValues);
                 break;
+
+            // This is internal command, sent only by the slaves for handshake step 1
             case 'replconf':
                 response = handleReplConfCommand(commandArray);
                 break;
-
+            // Handshake step 2 
             case 'psync':
                 response = handlePsyncCommand(commandArray);
+                connectedSlaves.push(socket);
                 break;
 
             default:
@@ -91,8 +103,18 @@ const server = net.createServer((socket) => {
         }
         for (const resp of response)
             socket.write(resp);
-
     })
+
+    socket.on('end', () => {
+        console.log(`Client disconnected: ${socket.remoteAddress}:${socket.remotePort}`);
+
+        // Remove the disconnected slave from the connectedSlaves array
+        const index = connectedSlaves.indexOf(socket);
+        if (index !== -1) {
+            connectedSlaves.splice(index, 1);
+            console.log(`Removed slave at ${socket.remoteAddress}:${socket.remotePort}`);
+        }
+    });
 
 })
 
