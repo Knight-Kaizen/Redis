@@ -121,6 +121,10 @@ const handleInfoCommand = (commandArray, flagsAndValues) => {
         return parseResponse('bulkString', 'allInfoHere')
 }
 
+const handleReplConfCommand = (commandArray)=>{
+    const response = '+OK\r\n'; // hardcoding simple response for now
+    return response;
+}
 module.exports = {
     handleEchoCommand,
     handleSetCommand,
@@ -130,5 +134,6 @@ module.exports = {
     handlePingCommand,
     loadRedisStore,
     handleInfoCommand,
-    parseResponse
+    parseResponse,
+    handleReplConfCommand
 }
