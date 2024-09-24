@@ -1,7 +1,7 @@
 const net = require('net');
 const fs = require('fs');
 const path = require('path')
-const { handleEchoCommand, handleSetCommand, handleGetCommand, handleConfigCommand, handleKeysCommand, handlePingCommand, loadRedisStore, handleInfoCommand, handleReplConfCommand } = require('../utils/commands');
+const { handleEchoCommand, handleSetCommand, handleGetCommand, handleConfigCommand, handleKeysCommand, handlePingCommand, loadRedisStore, handleInfoCommand, handleReplConfCommand, handlePsyncCommand } = require('../utils/commands');
 const { sendHandshake } = require('../utils/replication');
 
 let port = 6379; // default
@@ -26,7 +26,7 @@ if (flagsAndValues.port)
     port = flagsAndValues.port
 
 // If this is replica server, connect to master
-if(flagsAndValues.replicaof){
+if (flagsAndValues.replicaof) {
     sendHandshake(flagsAndValues);
 }
 
@@ -80,6 +80,10 @@ const server = net.createServer((socket) => {
                 break;
             case 'replconf':
                 response = handleReplConfCommand(commandArray);
+                break;
+
+            case 'psync':
+                response = handlePsyncCommand(commandArray);
                 break;
 
             default:

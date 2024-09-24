@@ -1,6 +1,7 @@
 const path = require('path');
 const moment = require('moment-timezone');
 const { rdbParser } = require('./rdbParser');
+const { off } = require('process');
 
 let redisStore = {
     // key: { value: 34, expiry: UNIX } // Format for storing keys and values 
@@ -121,10 +122,27 @@ const handleInfoCommand = (commandArray, flagsAndValues) => {
         return parseResponse('bulkString', 'allInfoHere')
 }
 
-const handleReplConfCommand = (commandArray)=>{
+const handleReplConfCommand = (commandArray) => {
     const response = '+OK\r\n'; // hardcoding simple response for now
     return response;
 }
+
+const handlePsyncCommand = (commandArray) => {
+    let masterReplicationID = commandArray[1];
+    let slaveOffset = commandArray[2];
+
+    let response = '';
+    if (masterReplicationID == '?' && slaveOffset == -1) {
+        // This is the first time synchronise 
+        // replication is is unknown to slave, so we will set it 
+        masterReplicationID = '8371b4fb1155b71f4a04d3e1bc3e18c4a990aeeb'; // sending the masters replication ID. 
+        // offset will be set to zero 
+        const masterOffset = 0; // sending offset = 0, means no data is sent till now.
+        response = `+FULLRESYNC ${masterReplicationID} ${masterOffset}\r\n`
+    }
+    return response;
+}
+
 module.exports = {
     handleEchoCommand,
     handleSetCommand,
@@ -135,5 +153,6 @@ module.exports = {
     loadRedisStore,
     handleInfoCommand,
     parseResponse,
-    handleReplConfCommand
+    handleReplConfCommand,
+    handlePsyncCommand
 }
