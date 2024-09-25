@@ -1,8 +1,9 @@
 const net = require('net');
-const { parseResponse, handleSetCommand, handleReplConfCommand } = require('./commands');
+const { parseResponse, handleSetCommand, handleReplConfCommand, handlePingCommand } = require('./commands');
 
 const client = new net.Socket();
 let isHandshakeDone = false;
+let dataReceivedByteCount = 0; // should count all the data received after handshake is done
 
 const sendHandshake = (flagsAndValues) => {
     if (flagsAndValues.replicaof) {
@@ -38,13 +39,21 @@ const sendHandshake = (flagsAndValues) => {
                                 handleSetCommand(commandArray);
                                 break;
                             case 'replconf':
-                                response = handleReplConfCommand(commandArray);
+                                response = handleReplConfCommand(commandArray, dataReceivedByteCount);
+                                break;
+                            case 'ping':
+                                parseResponse('bulkStringArray', ['PING']);
                                 break;
                             default:
                                 response = [`-ERR unknown command '${command}'\r\n`];
                         }
                         for (const resp of response)
                             client.write(resp);
+
+                        // count data received after current command is responded
+                        // byte should be counted of resp formatted commands.  
+                        const respCommand = parseResponse('bulkStringArray', commandArray);
+                        dataReceivedByteCount += respCommand.length;
                     }
                 })
 
@@ -109,6 +118,10 @@ const parseCommand = (command) => {
 
             i += 4;
         }
+        else if (command == 'ping') {
+            array.push(command);
+        }
+
         if (array.length)
             finalArray.push(array);
     }

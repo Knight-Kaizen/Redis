@@ -122,15 +122,14 @@ const handleInfoCommand = (commandArray, flagsAndValues, connectedSlaves) => {
         return parseResponse('bulkString', 'allInfoHere')
 }
 
-const handleReplConfCommand = (commandArray) => {
-    console.log('command array in handle replconf command funciton', commandArray);
+const handleReplConfCommand = (commandArray, dataReceivedByteCount) => {
     const commandArg1 = commandArray[1];
 
     if (commandArg1 == 'listening-port' || commandArg1 == 'capa') {
         return ['+OK\r\n'];
     }
     else if (commandArg1 == 'getack') {
-        const slaveOffset = 0; // hardcode for now
+        const slaveOffset = dataReceivedByteCount;
         const response = parseResponse('bulkStringArray', ['REPLCONF', 'ACK', slaveOffset.toString()]);
         return [response];
     }
