@@ -1,7 +1,8 @@
 const net = require('net');
-const { parseResponse, handleSetCommand } = require('./commands');
+const { parseResponse, handleSetCommand, handleReplConfCommand } = require('./commands');
 
 const client = new net.Socket();
+let isHandshakeDone = false;
 
 const sendHandshake = (flagsAndValues) => {
     if (flagsAndValues.replicaof) {
@@ -22,52 +23,67 @@ const sendHandshake = (flagsAndValues) => {
 
         // Handle data received from the server
         client.on('data', function (data) {
-            data = data.toString();
+            if (isHandshakeDone) {
+                // master will send regular write commands, and periodically REPLCONF GETACK command 
 
-            const commandArrays = parseCommand(data.toString());
+                const commandArrays = parseCommand(data.toString());
 
-            commandArrays.forEach((commandArray) => {
-
-                // These commands are sent by master and dont expect reply
-                if (commandArray.length) {
-                    let response = [];
-                    const command = commandArray[0].toLowerCase();
-                    switch (command) {
-                        case 'set':
-                            response = handleSetCommand(commandArray);
-                            break;
-
-                        default:
-                            response = `-ERR unknown command '${command}'\r\n`;
+                commandArrays.forEach((commandArray) => {
+                    // These commands are sent by master and dont expect reply
+                    if (commandArray.length) {
+                        let response = [];
+                        const command = commandArray[0].toLowerCase();
+                        switch (command) {
+                            case 'set':
+                                handleSetCommand(commandArray);
+                                break;
+                            case 'replconf':
+                                response = handleReplConfCommand(commandArray);
+                                break;
+                            default:
+                                response = [`-ERR unknown command '${command}'\r\n`];
+                        }
+                        for (const resp of response)
+                            client.write(resp);
                     }
+                })
+
+            }
+            else {
+                // handshake continues here ...
+                data = data.toString();
+
+                // Handshake step 2: Send REPLCONF command if received +PONG
+                if (data.includes('PONG')) {
+                    // The REPLCONF command is used to configure replication. Replicas will send this command to the master twice
+
+                    // notifying the master of the port it's listening on
+                    const replconf1 = parseResponse('bulkStringArray', ['REPLCONF', 'listening-port', flagsAndValues.port])
+                    client.write(replconf1);
+
+                    // replica notifying the master of its capabilities ("capa" is short for "capabilities")
+                    const replconf2 = parseResponse('bulkStringArray', ['REPLCONF', 'capa', 'psync2'])  // hardcoding capabilities for now
+                    client.write(replconf2);
+
                 }
-            })
 
-            // Handshake step 2: Send REPLCONF command if received +PONG
-            if (data.includes('PONG')) {
-                // The REPLCONF command is used to configure replication. Replicas will send this command to the master twice
+                // Handshake step 3: Send PSYNC command
+                // The PSYNC command is used to synchronize the state of the replica with the master.
+                if (data.includes('OK')) {
+                    // Since this is the first time the replica is connecting to the master, the replication ID will be ? (a question mark)
+                    const replicationID = '?' // asking the replication id of master
+                    // Since this is the first time the replica is connecting to the master, the offset will be -1
+                    const offset = '-1'; // means it has recieved -1 byte of data
 
-                // notifying the master of the port it's listening on
-                const replconf1 = parseResponse('bulkStringArray', ['REPLCONF', 'listening-port', flagsAndValues.port])
-                client.write(replconf1);
+                    const psync = parseResponse('bulkStringArray', ['PSYNC', replicationID, offset])
+                    client.write(psync);
 
-                // replica notifying the master of its capabilities ("capa" is short for "capabilities")
-                const replconf2 = parseResponse('bulkStringArray', ['REPLCONF', 'capa', 'psync2'])  // hardcoding capabilities for now
-                client.write(replconf2);
+                    // mark handshake done 
+                    isHandshakeDone = true;
+
+                }
             }
 
-            // Handshake step 3: Send PSYNC command
-            // The PSYNC command is used to synchronize the state of the replica with the master.
-            if (data.includes('OK')) {
-
-                // Since this is the first time the replica is connecting to the master, the replication ID will be ? (a question mark)
-                const replicationID = '?' // asking the replication id of master
-                // Since this is the first time the replica is connecting to the master, the offset will be -1
-                const offset = '-1'; // means it has recieved -1 byte of data
-
-                const psync = parseResponse('bulkStringArray', ['PSYNC', replicationID, offset])
-                client.write(psync);
-            }
         });
 
         client.on('error', (err) => {
@@ -79,22 +95,25 @@ const sendHandshake = (flagsAndValues) => {
 
 const parseCommand = (command) => {
     const commandArray = command.split('\r\n');
+
     const finalArray = [];
     // command can have multiple commands 
-    // here we will be having set command only 
-    let i = 0;
-    while (i < commandArray.length && commandArray[i].includes('*')) {
-        // command is an array 
+    for (let i = 0; i < commandArray.length; i++) {
+        const command = commandArray[i].toLowerCase();
         const array = [];
-        array.push(commandArray[i + 2]);
-        array.push(commandArray[i + 4]);
-        array.push(commandArray[i + 6]);
+        if (command == 'set' || command == 'replconf') {
+            // will have 2 arguments, key and value 
+            array.push(command); // command
+            array.push(commandArray[i + 2].toLowerCase()); // key
+            array.push(commandArray[i + 4].toLowerCase()); // value
 
-        i += 6;
-        i++;
-        finalArray.push(array)
+            i += 4;
+        }
+        if (array.length)
+            finalArray.push(array);
     }
 
+    // console.log(finalArray);
     return finalArray
 }
 
