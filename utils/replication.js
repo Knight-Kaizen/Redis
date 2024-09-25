@@ -1,5 +1,5 @@
 const net = require('net');
-const { parseResponse } = require('./commands');
+const { parseResponse, handleSetCommand } = require('./commands');
 
 const client = new net.Socket();
 
@@ -23,7 +23,25 @@ const sendHandshake = (flagsAndValues) => {
         // Handle data received from the server
         client.on('data', function (data) {
             data = data.toString();
-            // console.log('Recieved data', data);
+
+            const commandArrays = parseCommand(data.toString());
+
+            commandArrays.forEach((commandArray) => {
+
+                // These commands are sent by master and dont expect reply
+                if (commandArray.length) {
+                    let response = [];
+                    const command = commandArray[0].toLowerCase();
+                    switch (command) {
+                        case 'set':
+                            response = handleSetCommand(commandArray);
+                            break;
+
+                        default:
+                            response = `-ERR unknown command '${command}'\r\n`;
+                    }
+                }
+            })
 
             // Handshake step 2: Send REPLCONF command if received +PONG
             if (data.includes('PONG')) {
@@ -58,6 +76,28 @@ const sendHandshake = (flagsAndValues) => {
     }
 
 }
+
+const parseCommand = (command) => {
+    const commandArray = command.split('\r\n');
+    const finalArray = [];
+    // command can have multiple commands 
+    // here we will be having set command only 
+    let i = 0;
+    while (i < commandArray.length && commandArray[i].includes('*')) {
+        // command is an array 
+        const array = [];
+        array.push(commandArray[i + 2]);
+        array.push(commandArray[i + 4]);
+        array.push(commandArray[i + 6]);
+
+        i += 6;
+        i++;
+        finalArray.push(array)
+    }
+
+    return finalArray
+}
+
 
 module.exports = {
     sendHandshake

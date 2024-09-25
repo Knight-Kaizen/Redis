@@ -106,11 +106,11 @@ const handlePingCommand = () => {
     return ['+PONG\r\n'];
 }
 
-const handleInfoCommand = (commandArray, flagsAndValues) => {
+const handleInfoCommand = (commandArray, flagsAndValues, connectedSlaves) => {
     if (commandArray[1].toLowerCase() == 'replication') {
         // it needs info about redis cluster, role of current server, number of slaves, etc. 
         const serverRole = flagsAndValues.replicaof ? 'slave' : 'master';
-        const totalSlaves = 0; // hardocde
+        const totalSlaves = connectedSlaves ? connectedSlaves.length : 0;
         const serverID = '8371b4fb1155b71f4a04d3e1bc3e18c4a990aeeb';
         const masterOffset = 0;
         const response = parseResponse('bulkString',
@@ -152,6 +152,10 @@ const handlePsyncCommand = (commandArray) => {
     return response;
 }
 
+const handleFullResyncCommand = (commandArray)=>{
+    console.log(commandArray);
+}
+
 module.exports = {
     handleEchoCommand,
     handleSetCommand,
@@ -163,5 +167,6 @@ module.exports = {
     handleInfoCommand,
     parseResponse,
     handleReplConfCommand,
-    handlePsyncCommand
+    handlePsyncCommand,
+    handleFullResyncCommand
 }

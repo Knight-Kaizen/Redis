@@ -120,3 +120,7 @@ KEYS *
 1. Implement `HGET`, `HGETALL`, and `HSET` commands to add support for Redis hash data structures.
 2. Implement the `SAVE` command to allow saving the in-memory Redis store to an RDB file.
 
+
+// Run master -> node app/main 
+// Run replica on port 6380 -> node app/main.js --port 6380 --replicaof "localhost 6379"
+// Open redis-cli -> redis-cli -p 6380
