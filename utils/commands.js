@@ -2,11 +2,18 @@ const path = require('path');
 const moment = require('moment-timezone');
 const { rdbParser } = require('./rdbParser');
 const fs = require('fs');
-const { parse } = require('url');
 
 let redisStore = {
     // key: { value: 34, expiry: UNIX } // Format for storing keys and values 
 };
+
+const slaveAcks = {
+    // port : ackCount
+};
+
+const setCommandByClient = {
+    // port : setCount
+}
 
 // -------------------------------- Helper Functions -----------------------
 
@@ -45,13 +52,18 @@ const handleEchoCommand = (commandArray) => {
     return [response];
 }
 
-const handleSetCommand = (commandArray) => {
+const handleSetCommand = (commandArray, socket) => {
     const key = commandArray[1];
     const value = commandArray[2];
     const flag = commandArray[3] ? commandArray[3] : '';
     const expiryInSec = commandArray[4] ? commandArray[4] : '';
 
     redisStore[key] = { value };
+    // in case of no socket present, it is coming to slave, ignore
+    if (socket) {
+        setCommandByClient[socket.remotePort] = setCommandByClient[socket.remotePort] ? setCommandByClient[socket.remotePort] + 1 : 1;
+    }
+
     if (flag.toLowerCase() == 'px' && expiryInSec) {
         redisStore[key].expiry = moment().add(expiryInSec, 'milliseconds').valueOf();
     }
@@ -126,9 +138,8 @@ const handleInfoCommand = (commandArray, flagsAndValues, connectedSlaves) => {
         return parseResponse('bulkString', 'allInfoHere')
 }
 
-const handleReplConfCommand = (commandArray, dataReceivedByteCount) => {
+const handleReplConfCommand = (commandArray, dataReceivedByteCount, socket) => {
     const commandArg1 = commandArray[1];
-
     if (commandArg1 == 'listening-port' || commandArg1 == 'capa') {
         return ['+OK\r\n'];
     }
@@ -136,6 +147,11 @@ const handleReplConfCommand = (commandArray, dataReceivedByteCount) => {
         const slaveOffset = dataReceivedByteCount;
         const response = parseResponse('bulkStringArray', ['REPLCONF', 'ACK', slaveOffset.toString()]);
         return [response];
+    }
+    else if (commandArg1.toLowerCase() == 'ack') {
+        // If ack by same slave, increase ack count, else add entry for new slave
+        slaveAcks[socket.remotePort] = slaveAcks[socket.remotePort] ? slaveAcks[socket.remotePort] + 1 : 1;
+        return [];
     }
 }
 
@@ -168,12 +184,27 @@ const handleFullResyncCommand = (commandArray) => {
     console.log(commandArray);
 }
 
-const handleWaitCommand = (commandArray, connectedSlaves) => {
-    // wait command tells the client, that how many replicas have processed the command successfully
-    const connectedReplicaCount = connectedSlaves; // hardcode for now 
-    const resp = parseResponse('respInteger', connectedReplicaCount);
+const handleWaitCommand = async (commandArray, connectedSlaves) => {
+
+    let commandProcessedByReplicaCount = Object.keys(setCommandByClient).length ? Object.keys(slaveAcks).length : connectedSlaves;
+    const reqReplicaCount = commandArray[1];
+    const timeoutInMs = commandArray[2];
+
+    // If current count is less than required, wait for the timeout period
+    if (Object.keys(setCommandByClient).length && commandProcessedByReplicaCount < reqReplicaCount) {
+
+        const waitStartTime = Date.now(); // Track the time before waiting
+        await new Promise((resolve) => setTimeout(resolve, Number(timeoutInMs)
+        ));
+        // Recount acks after waiting
+        commandProcessedByReplicaCount = Object.keys(slaveAcks).length;
+    }
+
+    // After waiting or if enough replicas already processed, return response
+    const resp = parseResponse('respInteger', commandProcessedByReplicaCount);
     return [resp];
-}
+};
+
 
 module.exports = {
     handleEchoCommand,

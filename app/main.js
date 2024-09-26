@@ -1,7 +1,7 @@
 const net = require('net');
 const fs = require('fs');
 const path = require('path')
-const { handleEchoCommand, handleSetCommand, handleGetCommand, handleConfigCommand, handleKeysCommand, handlePingCommand, loadRedisStore, handleInfoCommand, handleReplConfCommand, handlePsyncCommand, handleFullResyncCommand, handleWaitCommand } = require('../utils/commands');
+const { handleEchoCommand, handleSetCommand, handleGetCommand, handleConfigCommand, handleKeysCommand, handlePingCommand, loadRedisStore, handleInfoCommand, handleReplConfCommand, handlePsyncCommand, handleFullResyncCommand, handleWaitCommand, parseResponse } = require('../utils/commands');
 const { sendHandshake } = require('../utils/replication');
 
 let port = 6379; // default
@@ -36,20 +36,28 @@ let isRedisStoreLoaded = false;
 // save all slave connection 
 const connectedSlaves = [];
 
-const sendWriteCommandsToSlaves = (data) => {
+const sendWriteCommandsToSlaves = async (data) => {
+
     for (const slaveSocket of connectedSlaves) {
         slaveSocket.write(data);
+    }
+}
+
+const sendGetAckCommandsToSlaves = () => {
+    for (const slaveSocket of connectedSlaves) {
+        const getAckCommand = parseResponse('bulkStringArray', ['REPLCONF', 'GETACK', '*'])
+        slaveSocket.write(getAckCommand)
     }
 }
 
 const server = net.createServer((socket) => {
     console.log(`Client connected: ${socket.remoteAddress}:${socket.remotePort}`);
 
-    socket.on('data', (data) => {
+    socket.on('data', async (data) => {
         const commandArray = parseCommand(data.toString());
         let command = commandArray[0];
         if (command) command = command.toLowerCase(); // commands are case insensitive in redis
-        console.log({commandArray});
+        console.log({ commandArray });
 
         // If rdb file exists, load redis store
         if (fileDir && fileName && !isRedisStoreLoaded) {
@@ -70,7 +78,7 @@ const server = net.createServer((socket) => {
                 break;
 
             case 'set':
-                response = handleSetCommand(commandArray);
+                response = handleSetCommand(commandArray, socket);
                 sendWriteCommandsToSlaves(data);
                 break;
 
@@ -96,7 +104,7 @@ const server = net.createServer((socket) => {
 
             // This is internal command, sent only by the slaves for handshake step 1
             case 'replconf':
-                response = handleReplConfCommand(commandArray);
+                response = handleReplConfCommand(commandArray, 0, socket);
                 break;
 
             // Handshake step 2 
@@ -110,16 +118,19 @@ const server = net.createServer((socket) => {
                 break;
 
             case 'wait':
-                response = handleWaitCommand(commandArray, connectedSlaves.length);
+                sendGetAckCommandsToSlaves();
+                response = await handleWaitCommand(commandArray, connectedSlaves.length);
                 break;
 
             default:
                 response = `-ERR unknown command '${command}'\r\n`;
         }
 
+        if (response) {
+            for (const resp of response)
+                socket.write(resp);
+        }
 
-        for (const resp of response)
-            socket.write(resp);
 
     })
 
