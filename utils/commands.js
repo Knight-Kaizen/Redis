@@ -32,6 +32,9 @@ const parseResponse = (respEncoding, content) => {
     if (respEncoding == 'respInteger') {
         return `:${content}\r\n`;
     }
+    if (respEncoding == 'respSimpleString') {
+        return `+${content}\r\n`;
+    }
 }
 
 // it will recieve rdb file and directory
@@ -205,6 +208,12 @@ const handleWaitCommand = async (commandArray, connectedSlaves) => {
     return [resp];
 };
 
+const handleTypeCommand = (commandArray) => {
+    const key = commandArray[1];
+    const keyType = redisStore[key] ? 'string' : 'none';
+    const resp = parseResponse('respSimpleString', keyType);
+    return [resp];
+}
 
 module.exports = {
     handleEchoCommand,
@@ -219,5 +228,6 @@ module.exports = {
     handleReplConfCommand,
     handlePsyncCommand,
     handleFullResyncCommand,
-    handleWaitCommand
+    handleWaitCommand,
+    handleTypeCommand
 }
