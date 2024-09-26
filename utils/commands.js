@@ -2,6 +2,7 @@ const path = require('path');
 const moment = require('moment-timezone');
 const { rdbParser } = require('./rdbParser');
 const fs = require('fs');
+const { parse } = require('url');
 
 let redisStore = {
     // key: { value: 34, expiry: UNIX } // Format for storing keys and values 
@@ -20,6 +21,9 @@ const parseResponse = (respEncoding, content) => {
             response += `$${element.length}\r\n${element}\r\n`
         }
         return response;
+    }
+    if (respEncoding == 'respInteger') {
+        return `:${content}\r\n`;
     }
 }
 
@@ -164,6 +168,13 @@ const handleFullResyncCommand = (commandArray) => {
     console.log(commandArray);
 }
 
+const handleWaitCommand = (commandArray) => {
+    // wait command tells the client, that how many replicas have processed the command successfully
+    const connectedReplicaCount = 0; // hardcode for now 
+    const resp = parseResponse('respInteger', connectedReplicaCount);
+    return [resp];
+}
+
 module.exports = {
     handleEchoCommand,
     handleSetCommand,
@@ -176,5 +187,6 @@ module.exports = {
     parseResponse,
     handleReplConfCommand,
     handlePsyncCommand,
-    handleFullResyncCommand
+    handleFullResyncCommand,
+    handleWaitCommand
 }

@@ -1,7 +1,7 @@
 const net = require('net');
 const fs = require('fs');
 const path = require('path')
-const { handleEchoCommand, handleSetCommand, handleGetCommand, handleConfigCommand, handleKeysCommand, handlePingCommand, loadRedisStore, handleInfoCommand, handleReplConfCommand, handlePsyncCommand, handleFullResyncCommand } = require('../utils/commands');
+const { handleEchoCommand, handleSetCommand, handleGetCommand, handleConfigCommand, handleKeysCommand, handlePingCommand, loadRedisStore, handleInfoCommand, handleReplConfCommand, handlePsyncCommand, handleFullResyncCommand, handleWaitCommand } = require('../utils/commands');
 const { sendHandshake } = require('../utils/replication');
 
 let port = 6379; // default
@@ -49,7 +49,7 @@ const server = net.createServer((socket) => {
         const commandArray = parseCommand(data.toString());
         let command = commandArray[0];
         if (command) command = command.toLowerCase(); // commands are case insensitive in redis
-        // console.log({commandArray});
+        console.log({commandArray});
 
         // If rdb file exists, load redis store
         if (fileDir && fileName && !isRedisStoreLoaded) {
@@ -107,6 +107,10 @@ const server = net.createServer((socket) => {
 
             case 'fullresync':
                 handleFullResyncCommand(commandArray);
+                break;
+
+            case 'wait':
+                response = handleWaitCommand(commandArray);
                 break;
 
             default:
