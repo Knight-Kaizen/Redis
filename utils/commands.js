@@ -2,7 +2,8 @@ const path = require('path');
 const moment = require('moment-timezone');
 const { rdbParser } = require('./rdbParser');
 const fs = require('fs');
-const { Stream } = require('stream');
+const RadixTrie = require("radix-trie-js");
+
 
 let redisStore = {
     // key: { value: 34, expiry: UNIX } // Format for storing keys and values 
@@ -47,6 +48,13 @@ const loadRedisStore = (fileDir, fileName) => {
     // console.log('redis store loaded', redisStore, parsedRDB);
 }
 
+const  getLastStoredEntry = (trie) => {
+    let lastEntry = null;
+    for (const [key, value] of trie.entries()) {
+        lastEntry = { key, value };
+    }
+    return lastEntry;
+}
 // ------------------------------- Command Functions ----------------------------
 
 const handleEchoCommand = (commandArray) => {
@@ -212,7 +220,7 @@ const handleWaitCommand = async (commandArray, connectedSlaves) => {
 const handleTypeCommand = (commandArray) => {
     const key = commandArray[1];
     let keyType = 'none';
-    if(redisStore[key]){
+    if (redisStore[key]) {
         keyType = redisStore[key].value ? 'string' : 'stream';
     }
     const resp = parseResponse('respSimpleString', keyType);
@@ -223,18 +231,52 @@ const handleXaddCommand = (commandArray) => {
     // this will add streams in redis store 
     // incoming stream format - XADD stream_key ID key1 val1 key2 value2
     const stream_key = commandArray[1];
-    const streamID = commandArray[2];
-    const obj = {
-        streamID
-    }
-    for(let i = 3; i<= commandArray.length; i+=2){
+    const entryID = commandArray[2];
+    const obj = {}
+    for (let i = 3; i <= commandArray.length; i += 2) {
         // i = key, i+1 = value
-        obj[commandArray[i]] = commandArray[i+1];
+        obj[commandArray[i]] = commandArray[i + 1];
     }
-    redisStore[stream_key] = obj;
+    // check for the minimum ID 
+    if(entryID.toLowerCase() < '0-1'){
+        return [`-ERR The ID specified in XADD must be greater than 0-0\r\n`]
+    }
+    // Check if a stream exists in redis store using stream_key
+    if (redisStore[stream_key]) {
+        // check entry with same key exist 
+        const trie = redisStore[stream_key];
+        if(trie.get(entryID)){
+            // entry with same ID exists
+            return [`-ERR The ID specified in XADD is equal or smaller than the target stream top item\r\n`]
+        }
+        else{
+            // entry with same ID dont exist 
+            // comapre the ID with last inserted node's entryID 
+            const lastEntry = getLastStoredEntry(trie);
+            if(lastEntry){
+                const lastEntryID = lastEntry.key;
+                if(lastEntryID.toString() > entryID.toString())
+                    return [`-ERR The ID specified in XADD is equal or smaller than the target stream top item\r\n`]
+ 
+            }
+            
+        // insert new entry to the stream
+            trie.add(entryID, obj);
+            
+        }
+    }
+    else {
+        // add a new stream
 
-    console.log(JSON.stringify(redisStore, null, 2));
-    return parseResponse('bulkString', streamID);
+        // rax tree ( a trie based DS ) used to store redis-streams. 
+        const trie = new RadixTrie();
+        trie.add(entryID, obj);
+        redisStore[stream_key] = trie;
+    }
+
+
+    // console.log(JSON.stringify(redisStore, null, 2));
+    return parseResponse('bulkString', entryID);
 }
 
 module.exports = {
