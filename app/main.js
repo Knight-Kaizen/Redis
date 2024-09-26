@@ -110,7 +110,7 @@ const server = net.createServer((socket) => {
                 break;
 
             case 'wait':
-                response = handleWaitCommand(commandArray);
+                response = handleWaitCommand(commandArray, connectedSlaves.length);
                 break;
 
             default:

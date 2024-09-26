@@ -168,9 +168,9 @@ const handleFullResyncCommand = (commandArray) => {
     console.log(commandArray);
 }
 
-const handleWaitCommand = (commandArray) => {
+const handleWaitCommand = (commandArray, connectedSlaves) => {
     // wait command tells the client, that how many replicas have processed the command successfully
-    const connectedReplicaCount = 0; // hardcode for now 
+    const connectedReplicaCount = connectedSlaves; // hardcode for now 
     const resp = parseResponse('respInteger', connectedReplicaCount);
     return [resp];
 }
