@@ -1,7 +1,7 @@
 const net = require('net');
 const fs = require('fs');
 const path = require('path')
-const { handleEchoCommand, handleSetCommand, handleGetCommand, handleConfigCommand, handleKeysCommand, handlePingCommand, loadRedisStore, handleInfoCommand, handleReplConfCommand, handlePsyncCommand, handleFullResyncCommand, handleWaitCommand, parseResponse, handleTypeCommand } = require('../utils/commands');
+const { handleEchoCommand, handleSetCommand, handleGetCommand, handleConfigCommand, handleKeysCommand, handlePingCommand, loadRedisStore, handleInfoCommand, handleReplConfCommand, handlePsyncCommand, handleFullResyncCommand, handleWaitCommand, parseResponse, handleTypeCommand, handleXaddCommand } = require('../utils/commands');
 const { sendHandshake } = require('../utils/replication');
 
 let port = 6379; // default
@@ -124,6 +124,10 @@ const server = net.createServer((socket) => {
 
             case 'type':
                 response = handleTypeCommand(commandArray);
+                break;
+            
+            case 'xadd':
+                response = handleXaddCommand(commandArray);
                 break;
 
             default:

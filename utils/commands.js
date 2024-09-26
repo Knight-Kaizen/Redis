@@ -2,6 +2,7 @@ const path = require('path');
 const moment = require('moment-timezone');
 const { rdbParser } = require('./rdbParser');
 const fs = require('fs');
+const { Stream } = require('stream');
 
 let redisStore = {
     // key: { value: 34, expiry: UNIX } // Format for storing keys and values 
@@ -210,9 +211,30 @@ const handleWaitCommand = async (commandArray, connectedSlaves) => {
 
 const handleTypeCommand = (commandArray) => {
     const key = commandArray[1];
-    const keyType = redisStore[key] ? 'string' : 'none';
+    let keyType = 'none';
+    if(redisStore[key]){
+        keyType = redisStore[key].value ? 'string' : 'stream';
+    }
     const resp = parseResponse('respSimpleString', keyType);
     return [resp];
+}
+
+const handleXaddCommand = (commandArray) => {
+    // this will add streams in redis store 
+    // incoming stream format - XADD stream_key ID key1 val1 key2 value2
+    const stream_key = commandArray[1];
+    const streamID = commandArray[2];
+    const obj = {
+        streamID
+    }
+    for(let i = 3; i<= commandArray.length; i+=2){
+        // i = key, i+1 = value
+        obj[commandArray[i]] = commandArray[i+1];
+    }
+    redisStore[stream_key] = obj;
+
+    console.log(JSON.stringify(redisStore, null, 2));
+    return parseResponse('bulkString', streamID);
 }
 
 module.exports = {
@@ -229,5 +251,6 @@ module.exports = {
     handlePsyncCommand,
     handleFullResyncCommand,
     handleWaitCommand,
-    handleTypeCommand
+    handleTypeCommand,
+    handleXaddCommand
 }
