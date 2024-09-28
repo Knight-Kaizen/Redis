@@ -17,7 +17,7 @@ const setCommandByClient = {
     // port : setCount
 }
 let waitingForNewEntry = false;
-const waitingForStreamIDs = [];
+let waitingForStreamIDs = [];
 let receivedStreamsWhileWaiting = {
     // streamID: [entryID-1, entryID-2]
 }
@@ -62,7 +62,6 @@ const getLastStoredEntry = (trie) => {
 
 // timestamp is always in a miliseconds
 const validateEntryID = (lastEntryID, currEntryID) => {
-    console.log('In validaion func', lastEntryID, currEntryID);
     const resp = {
         isValidEntry: false,
         msg: currEntryID // will contain valid current entry ID or error msg
@@ -205,7 +204,7 @@ const handleKeysCommand = (commandArray) => {
 }
 
 const handlePingCommand = () => {
-    console.log('received ping command, responding');
+    // console.log('received ping command, responding');
     return ['+PONG\r\n'];
 }
 
@@ -268,7 +267,7 @@ const handlePsyncCommand = (commandArray) => {
 }
 
 const handleFullResyncCommand = (commandArray) => {
-    console.log(commandArray);
+    // console.log(commandArray);
 }
 
 const handleWaitCommand = async (commandArray, connectedSlaves) => {
@@ -483,6 +482,9 @@ const handleXReadCommandWithReadBlocking = async (commandArray, socket) => {
     // toggle waiting flag 
     waitingForNewEntry = true;
     const streamArray = commandArray.slice(4);
+    for (let i = 0; i < streamArray.length; i += 2) {
+        waitingForStreamIDs.push(streamArray[i]);
+    }
 
     let response = [];
     if (timeoutInMs != '0') {
@@ -497,22 +499,22 @@ const handleXReadCommandWithReadBlocking = async (commandArray, socket) => {
     await waitForNewEntries();
 
 
-
     // Fire XRead command with stream keys and entry IDs 
     response = handleXReadCommand(['XREAD', 'STREAMS', ...streamArray]);
 
-    if(streamArray.length == 2){
+    if (streamArray.length == 2) {
         // single stream queried, if response is null, return empty array 
         const splittedResp = response[0].split('\r\n');
         const entryArrayCount = splittedResp[4];
-        if(entryArrayCount.includes('0')) // means no entry present, return empty bulk array
-        response[0] = `$-1\r\n`;
+        if (entryArrayCount.includes('0')) // means no entry present, return empty bulk array
+            response[0] = `$-1\r\n`;
     }
     socket.write(response[0]);
 
     // cleanup
     receivedStreamsWhileWaiting = {};
     waitingForNewEntry = false;
+    waitingForStreamIDs = [];
     return;
 
 
