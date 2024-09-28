@@ -444,10 +444,17 @@ const handleXReadCommand = (commandArray) => {
         // extract keys and startingIDs 
         const streamKey = streamArray[i];
         let entryID = streamArray[i + (streamArray.length) / 2];
+        let streamRangeCommand = [];
 
-        const incrementedEntryID = `${entryID.split('-')[0]}-${Number(entryID.split('-')[1]) + 1}`
+        if (entryID == '$') {
+            const startingEntryID = receivedStreamsWhileWaiting[streamKey] ? receivedStreamsWhileWaiting[streamKey][0] : `${Date.now()}-9999999`;
+            streamRangeCommand = ['XRANGE', streamKey, startingEntryID, '+'];
+        }
+        else {
+            const incrementedEntryID = `${entryID.split('-')[0]}-${Number(entryID.split('-')[1]) + 1}`
+            streamRangeCommand = ['XRANGE', streamKey, incrementedEntryID, '+'];
+        }
 
-        const streamRangeCommand = ['XRANGE', streamKey, incrementedEntryID, '+'];
         streamReadResponse.push(`*2\r\n${parseResponse('bulkString', streamKey)}${handleXRangeCommand(streamRangeCommand)[0]}`)
     }
 
