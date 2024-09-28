@@ -349,8 +349,75 @@ const handleXaddCommand = (commandArray) => {
     }
 
 
-    // console.log(JSON.stringify(redisStore, null, 2));
+    // console.log(JSON.stringify({redisStore}, null, 2));
     return parseResponse('bulkString', entryID);
+}
+
+/**
+ * Parses XRANGE command parameters.
+ * 
+ * @param {*} commandArray - [XRANGE some_key startID endID]
+ * @returns {Array} - Properly formatted XRANGE command array.
+ * 
+ * - `XRANGE some_key startID endID` => Returns entries in the **inclusive** range of start and end IDs.
+ * - Defaults: `startID = 0` (start of stream), `endID = +` (end of stream).
+ * - Special IDs: 
+ *    - `-` => Beginning of stream.
+ *    - `+` => End of stream.
+ * 
+ * ### Examples:
+ * - `XRANGE some_key - 1526985054079` => From start to ID `1526985054079`.
+ * - `XRANGE key 1526985054069-0 1526985054079-5`  // From ID `1526985054069-0` to `1526985054079-5`
+ * - `XRANGE some_key 1526985054069 +` => From ID `1526985054069` to end.
+ */
+const handleXRangeCommand = (commandArray) => {
+
+    const streamKey = commandArray[1];
+    let streamStart = commandArray[2];
+    let streamEnd = commandArray[3];
+
+
+    if (!streamStart.includes('-')) {
+        streamStart += '-0'; //append seq number
+    }
+
+    if (streamEnd != '+' && !streamEnd.includes('-')) {
+        streamEnd += '-9999999999999999'; //append seq number
+    }
+
+    const trie = redisStore[streamKey];
+
+    if (!trie)
+        return ['$-1\r\n'];
+
+    // stream exists 
+    const requiredStreams = [];
+
+    for (const [key, value] of trie.entries()) {
+        if ((streamStart == '-' || streamStart <= key) && (streamEnd == '+' || streamEnd >= key))
+            requiredStreams.push({ key, value });
+    }
+
+    const finalResponse = [];
+    for (const { key, value } of requiredStreams) {
+        const parsedKey = parseResponse('bulkString', key);
+        const valueArray = [];
+
+        for (const [key1, val1] of Object.entries(value)) {
+            valueArray.push(parseResponse('bulkString', key1));
+            valueArray.push(parseResponse('bulkString', val1));
+        }
+
+        let parsedValueArray = `*${valueArray.length}\r\n${valueArray.join('')}`;
+
+        const parsedEntry = `*2\r\n${parsedKey}${parsedValueArray}`;
+
+        finalResponse.push(parsedEntry);
+
+    }
+    const response = `*${finalResponse.length}\r\n${finalResponse.join('')}`;
+
+    return [response];
 }
 
 module.exports = {
@@ -368,5 +435,6 @@ module.exports = {
     handleFullResyncCommand,
     handleWaitCommand,
     handleTypeCommand,
-    handleXaddCommand
+    handleXaddCommand,
+    handleXRangeCommand
 }
