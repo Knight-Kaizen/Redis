@@ -398,6 +398,7 @@ const handleXRangeCommand = (commandArray) => {
             requiredStreams.push({ key, value });
     }
 
+
     const finalResponse = [];
     for (const { key, value } of requiredStreams) {
         const parsedKey = parseResponse('bulkString', key);
@@ -419,7 +420,32 @@ const handleXRangeCommand = (commandArray) => {
 
     return [response];
 }
+/**
+ * Used to read multiple streams
+ * @param {*} commandArray 
+ * XRead is exclusive
+ * Example 
+ * XREAD STREAMS stream1 stream2 stream3 0 0 0 // read from specific IDs in each stream
+ * XREAD STREAMS stream1 stream2 stream3 id1 id2 id3 ...
+ */
+const handleXReadCommand = (commandArray) => {
+    const streamReadResponse = [];
 
+    const streamArray = commandArray.slice(2);
+    for (let i = 0; i < (streamArray.length) / 2; i++) {
+        // extract keys and startingIDs 
+        const streamKey = streamArray[i];
+        let entryID = streamArray[i + (streamArray.length) / 2];
+
+        const incrementedEntryID = `${entryID.split('-')[0]}-${Number(entryID.split('-')[1]) + 1}`
+
+        const streamRangeCommand = ['XRANGE', streamKey, incrementedEntryID, '+'];
+        streamReadResponse.push(`*2\r\n${parseResponse('bulkString', streamKey)}${handleXRangeCommand(streamRangeCommand)[0]}`)
+    }
+
+    const finalResponse = `*${streamReadResponse.length}\r\n${streamReadResponse.join('')}`
+    return [finalResponse];
+}
 module.exports = {
     handleEchoCommand,
     handleSetCommand,
@@ -436,5 +462,6 @@ module.exports = {
     handleWaitCommand,
     handleTypeCommand,
     handleXaddCommand,
-    handleXRangeCommand
+    handleXRangeCommand,
+    handleXReadCommand
 }
