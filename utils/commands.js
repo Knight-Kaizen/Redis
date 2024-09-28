@@ -16,7 +16,11 @@ const slaveAcks = {
 const setCommandByClient = {
     // port : setCount
 }
-
+let waitingForNewEntry = false;
+const waitingForStreamIDs = [];
+let receivedStreamsWhileWaiting = {
+    // streamID: [entryID-1, entryID-2]
+}
 // -------------------------------- Helper Functions -----------------------
 
 const parseResponse = (respEncoding, content) => {
@@ -348,6 +352,11 @@ const handleXaddCommand = (commandArray) => {
         redisStore[stream_key] = trie;
     }
 
+    // Handle cases if waiting for new streams
+    // IF the XADD command failed, no new message is added to the stream.
+    if (waitingForNewEntry && waitingForStreamIDs.includes(stream_key)) {
+        receivedStreamsWhileWaiting[stream_key] = receivedStreamsWhileWaiting[stream_key] ? receivedStreamsWhileWaiting[stream_key].push(entryID) : [entryID];
+    }
 
     // console.log(JSON.stringify({redisStore}, null, 2));
     return parseResponse('bulkString', entryID);
@@ -446,6 +455,70 @@ const handleXReadCommand = (commandArray) => {
     const finalResponse = `*${streamReadResponse.length}\r\n${streamReadResponse.join('')}`
     return [finalResponse];
 }
+
+const waitForNewEntries = () => {
+    return new Promise((resolve) => {
+        const checkForEntries = () => {
+            // If new entries are detected, resolve the promise
+            if (Object.keys(receivedStreamsWhileWaiting).length) {
+                waitingForNewEntry = false;
+                resolve();
+            } else {
+                // Check again after a short delay
+                if (waitingForNewEntry)
+                    setTimeout(checkForEntries, 50);  // Non-blocking wait
+                else
+                    resolve();
+            }
+        };
+        checkForEntries();
+    });
+};
+
+// can be waitign for single stream or multiple 
+// XREAD BLOCK 1000 STREAMS mystream1 mystream2 mystream3 $ 2-2 1-2
+const handleXReadCommandWithReadBlocking = async (commandArray, socket) => {
+    const timeoutInMs = commandArray[2];
+
+    // toggle waiting flag 
+    waitingForNewEntry = true;
+    const streamArray = commandArray.slice(4);
+
+    let response = [];
+    if (timeoutInMs != '0') {
+        // if timeout == 0, blocking read indefinitely -> run xread command only when new entry comes 
+        // else blocking read for time -> run xread command after timeout OR when new entry comes
+        setTimeout(() => {
+            waitingForNewEntry = false;
+        }, timeoutInMs);
+    }
+
+    // Wait until new entries are detected
+    await waitForNewEntries();
+
+
+
+    // Fire XRead command with stream keys and entry IDs 
+    response = handleXReadCommand(['XREAD', 'STREAMS', ...streamArray]);
+
+    if(streamArray.length == 2){
+        // single stream queried, if response is null, return empty array 
+        const splittedResp = response[0].split('\r\n');
+        const entryArrayCount = splittedResp[4];
+        if(entryArrayCount.includes('0')) // means no entry present, return empty bulk array
+        response[0] = `$-1\r\n`;
+    }
+    socket.write(response[0]);
+
+    // cleanup
+    receivedStreamsWhileWaiting = {};
+    waitingForNewEntry = false;
+    return;
+
+
+
+}
+
 module.exports = {
     handleEchoCommand,
     handleSetCommand,
@@ -463,5 +536,6 @@ module.exports = {
     handleTypeCommand,
     handleXaddCommand,
     handleXRangeCommand,
-    handleXReadCommand
+    handleXReadCommand,
+    handleXReadCommandWithReadBlocking
 }
