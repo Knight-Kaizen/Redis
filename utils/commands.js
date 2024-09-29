@@ -157,7 +157,7 @@ const handleSetCommand = (commandArray, socket) => {
 }
 
 const handleGetCommand = (commandArray) => {
-
+    console.log('In get command', redisStore);
 
     const key = commandArray[1];
 
@@ -527,22 +527,23 @@ const handleXReadCommandWithReadBlocking = async (commandArray, socket) => {
 const handleIncrCommand = (commandArray) => {
     // used to increment the value by 1 
     const key = commandArray[1];
-    let { value } = redisStore[key];
+    let value = redisStore[key] ? redisStore[key].value : null;
     let resp = [];
 
     if (value && isNaN(parseInt(value))) {
         // Not a integer
-        resp = [`-ERR: value is not an integer or out of range\r\n`]
+        return [`-ERR: value is not an integer or out of range\r\n`]
     }
-    else if (value && !isNaN(parseInt(value))) {
+
+    if (value && !isNaN(parseInt(value))) {
         value = parseInt(value) + 1;
-        resp = [parseResponse('respInteger', value)];
     }
     else {
         // IF key is missing, add key with value = 1;
-        redisStore[key] = '1';
-        resp = [parseResponse('respInteger', '1')];
+        value = 1;
     }
+    redisStore[key] = { value: value.toString() };
+    resp = [parseResponse('respInteger', value)];
     return resp;
 }
 
