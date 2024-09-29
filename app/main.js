@@ -1,7 +1,7 @@
 const net = require('net');
 const fs = require('fs');
 const path = require('path')
-const { handleEchoCommand, handleSetCommand, handleGetCommand, handleConfigCommand, handleKeysCommand, handlePingCommand, loadRedisStore, handleInfoCommand, handleReplConfCommand, handlePsyncCommand, handleFullResyncCommand, handleWaitCommand, parseResponse, handleTypeCommand, handleXaddCommand, handleXRangeCommand, handleXReadCommand, handleXReadCommandWithReadBlocking, handleIncrCommand } = require('../utils/commands');
+const { handleEchoCommand, handleSetCommand, handleGetCommand, handleConfigCommand, handleKeysCommand, handlePingCommand, loadRedisStore, handleInfoCommand, handleReplConfCommand, handlePsyncCommand, handleFullResyncCommand, handleWaitCommand, parseResponse, handleTypeCommand, handleXaddCommand, handleXRangeCommand, handleXReadCommand, handleXReadCommandWithReadBlocking, handleIncrCommand, handleExecCommand } = require('../utils/commands');
 const { sendHandshake } = require('../utils/replication');
 
 let port = 6379; // default
@@ -77,7 +77,7 @@ const server = net.createServer((socket) => {
         // }
 
         if (queuedCommands[socket.remotePort] && command != 'exec') { // If queue exists, queue all commands until exec comes
-            queuedCommands[socket.remotePort].push(data);
+            queuedCommands[socket.remotePort].push(commandArray);
             socket.write('+QUEUED\r\n');
             return;
         }
@@ -167,8 +167,7 @@ const server = net.createServer((socket) => {
                     if (!queuedCommands[socket.remotePort].length) // No queued commands avaialble
                         response = ['*0\r\n']; // empty array
 
-                    for (const queuedCommand of queuedCommands[socket.remotePort])
-                        socket.write(queuedCommand);
+                    response = handleExecCommand(queuedCommands[socket.remotePort]);
                     delete queuedCommands[socket.remotePort];
                 }
                 else

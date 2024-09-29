@@ -157,7 +157,6 @@ const handleSetCommand = (commandArray, socket) => {
 }
 
 const handleGetCommand = (commandArray) => {
-    console.log('In get command', redisStore);
 
     const key = commandArray[1];
 
@@ -165,8 +164,8 @@ const handleGetCommand = (commandArray) => {
     const expiry = redisStore[key] ? redisStore[key].expiry : '';
 
     if (value && (expiry ? expiry > moment().valueOf() : true)) {
-        const response = parseResponse('bulkString', value);
-        return (response);
+        const response = parseResponse('bulkString', value.toString());
+        return [response];
     }
     else
         return ['$-1\r\n'];
@@ -547,6 +546,29 @@ const handleIncrCommand = (commandArray) => {
     return resp;
 }
 
+const handleExecCommand = (arrayOfCommandArray) => {
+    const response = [];
+    for (const commandArray of arrayOfCommandArray) {
+        let command = commandArray[0].toLowerCase();
+        switch (command) {
+            case 'set':
+                response.push(handleSetCommand(commandArray)[0]);
+                break;
+
+            case 'get':
+                response.push(handleGetCommand(commandArray)[0]);
+                break;
+
+            case 'incr':
+                response.push(handleIncrCommand(commandArray)[0]);
+                break;
+            default:
+                response.push(`-ERR unknown command '${command}'\r\n`)
+        }
+    }
+
+    return [`*${response.length}\r\n${response.join('')}`]
+}
 module.exports = {
     handleEchoCommand,
     handleSetCommand,
@@ -566,5 +588,6 @@ module.exports = {
     handleXRangeCommand,
     handleXReadCommand,
     handleXReadCommandWithReadBlocking,
-    handleIncrCommand
+    handleIncrCommand,
+    handleExecCommand
 }
