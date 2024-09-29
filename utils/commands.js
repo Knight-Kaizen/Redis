@@ -505,7 +505,6 @@ const handleXReadCommandWithReadBlocking = async (commandArray, socket) => {
     // Wait until new entries are detected
     await waitForNewEntries();
 
-
     // Fire XRead command with stream keys and entry IDs 
     response = handleXReadCommand(['XREAD', 'STREAMS', ...streamArray]);
 
@@ -523,9 +522,28 @@ const handleXReadCommandWithReadBlocking = async (commandArray, socket) => {
     waitingForNewEntry = false;
     waitingForStreamIDs = [];
     return;
+}
 
+const handleIncrCommand = (commandArray) => {
+    // used to increment the value by 1 
+    const key = commandArray[1];
+    let { value } = redisStore[key];
+    let resp = [];
 
-
+    if (value && isNaN(parseInt(value))) {
+        // Not a integer
+        resp = [`-ERR: value is not an integer or out of range\r\n`]
+    }
+    else if (value && !isNaN(parseInt(value))) {
+        value = parseInt(value) + 1;
+        resp = [parseResponse('respInteger', value)];
+    }
+    else {
+        // IF key is missing, add key with value = 1;
+        redisStore[key] = '1';
+        resp = [parseResponse('respInteger', '1')];
+    }
+    return resp;
 }
 
 module.exports = {
@@ -546,5 +564,6 @@ module.exports = {
     handleXaddCommand,
     handleXRangeCommand,
     handleXReadCommand,
-    handleXReadCommandWithReadBlocking
+    handleXReadCommandWithReadBlocking,
+    handleIncrCommand
 }
