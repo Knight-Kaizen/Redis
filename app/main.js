@@ -174,6 +174,15 @@ const server = net.createServer((socket) => {
                     response = ['-ERR EXEC without MULTI\r\n'];
                 break;
 
+            case 'discard':
+                if (queuedCommands[socket.remotePort]) {
+                    delete queuedCommands[socket.remotePort];
+                    response = ['+OK\r\n'];
+                }
+                else
+                    response = ['-ERR DISCARD without MULTI\r\n'];
+                break;
+
             default:
                 response = `-ERR unknown command '${command}'\r\n`;
         }
