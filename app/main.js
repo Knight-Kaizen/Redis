@@ -76,7 +76,7 @@ const server = net.createServer((socket) => {
         //     console.log('Slave received this - ', data, data.toString(), commandArray);
         // }
 
-        if (queuedCommands[socket.remotePort] && command != 'exec') { // If queue exists, queue all commands until exec comes
+        if (queuedCommands[socket.remotePort] && command != 'exec' && command != 'discard') { // If queue exists, queue all commands until exec comes
             queuedCommands[socket.remotePort].push(commandArray);
             socket.write('+QUEUED\r\n');
             return;
