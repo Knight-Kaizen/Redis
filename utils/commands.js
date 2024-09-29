@@ -532,7 +532,7 @@ const handleIncrCommand = (commandArray) => {
 
     if (value && isNaN(parseInt(value))) {
         // Not a integer
-        return [`-ERR: value is not an integer or out of range\r\n`]
+        return [`-ERR value is not an integer or out of range\r\n`]
     }
 
     if (value && !isNaN(parseInt(value))) {
