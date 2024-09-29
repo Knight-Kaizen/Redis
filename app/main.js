@@ -164,6 +164,9 @@ const server = net.createServer((socket) => {
 
             case 'exec':
                 if (queuedCommands[socket.remotePort]) {
+                    if (!queuedCommands[socket.remotePort].length) // No queued commands avaialble
+                        response = ['*0\r\n']; // empty array
+
                     for (const queuedCommand of queuedCommands[socket.remotePort])
                         socket.write(queuedCommand);
                     delete queuedCommands[socket.remotePort];
