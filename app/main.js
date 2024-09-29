@@ -15,6 +15,11 @@ const flagsAndValues = { // It will contain all the supported flags, and values 
     // If server runs in replica mode, master host & port will be passed
     replicaof: null
 };
+
+const queuedCommands = { // multi and exec commands store 
+    // port : [commands1, commands2 ] 
+}
+
 const arguments = process.argv.slice(2);
 for (let i = 0; i < arguments.length; i += 2) {
     const flag = arguments[i].split('--')[1];
@@ -70,6 +75,13 @@ const server = net.createServer((socket) => {
         //     // Log all data received by slave
         //     console.log('Slave received this - ', data, data.toString(), commandArray);
         // }
+
+        if (queuedCommands[socket.remotePort] && command != 'exec') { // If queue exists, queue all commands until exec comes
+            queuedCommands[socket.remotePort].push(data);
+            socket.write('QUEUED');
+            return;
+        }
+
 
         let response = [];
         switch (command) {
@@ -135,15 +147,30 @@ const server = net.createServer((socket) => {
                 break;
 
             case 'xread':
-                if(commandArray[1].toLowerCase() == 'block')
+                if (commandArray[1].toLowerCase() == 'block')
                     handleXReadCommandWithReadBlocking(commandArray, socket);
                 else
-                response = handleXReadCommand(commandArray);
+                    response = handleXReadCommand(commandArray);
                 break;
-            
-                case 'incr':
-                    response = handleIncrCommand(commandArray);
-                    break;
+
+            case 'incr':
+                response = handleIncrCommand(commandArray);
+                break;
+
+            case 'multi':
+                queuedCommands[socket.remotePort] = []; // init a queue command
+                response = ['+OK\r\n'];
+                break;
+
+            case 'exec':
+                if (queuedCommands[socket.remotePort]) {
+                    for (const queuedCommand of queuedCommands[socket.remotePort])
+                        socket.write(queuedCommand);
+                    delete queuedCommands[socket.remotePort];
+                }
+                else
+                    response = ['-ERR EXEC without MULTI\r\n'];
+                break;
 
             default:
                 response = `-ERR unknown command '${command}'\r\n`;
