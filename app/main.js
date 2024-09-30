@@ -4,6 +4,8 @@ const path = require('path')
 const { handleEchoCommand, handleSetCommand, handleGetCommand, handleConfigCommand, handleKeysCommand, handlePingCommand, loadRedisStore, handleInfoCommand, handleReplConfCommand, handlePsyncCommand, handleFullResyncCommand, handleWaitCommand, parseResponse, handleTypeCommand, handleXaddCommand, handleXRangeCommand, handleXReadCommand, handleXReadCommandWithReadBlocking, handleIncrCommand, handleExecCommand } = require('../utils/commands');
 const { sendHandshake } = require('../utils/replication');
 
+const { echo } = require('../utils/help');
+
 let port = 6379; // default
 const host = '127.0.0.1'
 
@@ -64,6 +66,9 @@ const server = net.createServer((socket) => {
         if (command) command = command.toLowerCase(); // commands are case insensitive in redis
         console.log({ commandArray });
 
+        if (command == '--help')
+            command = commandArray[1];
+      
         // If rdb file exists, load redis store
         if (fileDir && fileName && !isRedisStoreLoaded) {
             // Load store if file exist
@@ -86,7 +91,12 @@ const server = net.createServer((socket) => {
         let response = [];
         switch (command) {
             case 'echo':
-                response = handleEchoCommand(commandArray);
+                if (commandArray.length != 2)
+                    response = [`-ERR Invalid number of arguments. See --help echo\r\n`];
+                else if (commandArray[0] == '--help')
+                    response = echo();
+                else
+                    response = handleEchoCommand(commandArray);
                 break;
 
             case 'set':
