@@ -102,7 +102,7 @@ const server = net.createServer((socket) => {
                 break;
 
             case 'set':
-                if (commandArray.length != 3 && commandArray.length != 4)
+                if (commandArray.length != 3 && commandArray.length != 5)
                     response = [`-ERR Invalid number of arguments. See --help set\r\n`];
                 else if (commandArray[0] == '--help')
                     response = set();
