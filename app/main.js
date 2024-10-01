@@ -4,7 +4,9 @@ const path = require('path')
 const { handleEchoCommand, handleSetCommand, handleGetCommand, handleConfigCommand, handleKeysCommand, handlePingCommand, loadRedisStore, handleInfoCommand, handleReplConfCommand, handlePsyncCommand, handleFullResyncCommand, handleWaitCommand, parseResponse, handleTypeCommand, handleXaddCommand, handleXRangeCommand, handleXReadCommand, handleXReadCommandWithReadBlocking, handleIncrCommand, handleExecCommand } = require('../utils/commands');
 const { sendHandshake } = require('../utils/replication');
 
-const { echo } = require('../utils/help');
+const { echo, set, config, keys, ping } = require('../utils/help');
+const { get } = require('http');
+const { info } = require('console');
 
 let port = 6379; // default
 const host = '127.0.0.1'
@@ -68,7 +70,7 @@ const server = net.createServer((socket) => {
 
         if (command == '--help')
             command = commandArray[1];
-      
+
         // If rdb file exists, load redis store
         if (fileDir && fileName && !isRedisStoreLoaded) {
             // Load store if file exist
@@ -100,27 +102,56 @@ const server = net.createServer((socket) => {
                 break;
 
             case 'set':
-                response = handleSetCommand(commandArray, socket);
-                sendWriteCommandsToSlaves(data);
+                if (commandArray.length != 3 && commandArray.length != 4)
+                    response = [`-ERR Invalid number of arguments. See --help set\r\n`];
+                else if (commandArray[0] == '--help')
+                    response = set();
+                else {
+                    response = handleSetCommand(commandArray, socket);
+                    sendWriteCommandsToSlaves(data);
+                }
                 break;
 
             case 'get':
-                response = handleGetCommand(commandArray);
+                if (commandArray.length != 2)
+                    response = [`-ERR Invalid number of arguments. See --help get\r\n`];
+                else if (commandArray[0] == '--help')
+                    response = get();
+                else
+                    response = handleGetCommand(commandArray);
                 break;
 
             case 'config':
-                response = handleConfigCommand(commandArray, fileDir, fileName);
+                if (commandArray.length != 3)
+                    response = [`-ERR Invalid number of arguments. See --help config\r\n`];
+                else if (commandArray[0] == '--help')
+                    response = config();
+                else
+                    response = handleConfigCommand(commandArray, fileDir, fileName);
                 break;
 
             case 'keys':
-                response = handleKeysCommand(commandArray);
+                if (commandArray.length != 2)
+                    response = [`-ERR Invalid number of arguments. See --help keys\r\n`];
+                else if (commandArray[0] == '--help')
+                    response = keys();
+                else
+                    response = handleKeysCommand(commandArray);
                 break;
 
             case 'ping':
+                if (commandArray.length != 1)
+                    response = [`-ERR Invalid number of arguments. See --help ping\r\n`];
+                else if (commandArray[0] == '--help')
+                    response = ping();
                 response = handlePingCommand();
                 break;
 
             case 'info':
+                if (commandArray.length != 2)
+                    response = [`-ERR Invalid number of arguments. See --help info\r\n`];
+                else if (commandArray[0] == '--help')
+                    response = info();
                 response = handleInfoCommand(commandArray, flagsAndValues, connectedSlaves);
                 break;
 
